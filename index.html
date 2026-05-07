@@ -79,21 +79,21 @@
 
   .img-placeholder {
     width: 100%;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .img-placeholder.empty {
     aspect-ratio: 16/9;
     background: var(--bg-soft);
     border-radius: var(--radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 28px;
     border: 2px dashed var(--border);
-    overflow: hidden;
   }
   .img-placeholder img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: var(--radius);
+    height: auto;
     display: none;
   }
   .img-placeholder .img-label {
@@ -384,8 +384,7 @@
   <h1 class="cover-title">Diagnóstico Multigeracional</h1>
 
   <div class="img-placeholder" id="cover-img-wrap">
-    <img id="cover-img" src="" alt="Imagem de capa">
-    <span class="img-label">📷 Imagem de capa<br>(adicione depois)</span>
+    <img id="cover-img" src="https://i.imgur.com/LCS60wp.png" alt="Imagem de capa" style="display:block; width:100%; height:auto; border-radius:0;">
   </div>
 
   <p class="cover-text">
@@ -407,8 +406,7 @@
   <button class="btn-back" onclick="goTo('screen-cover')">← Voltar</button>
 
   <div class="img-placeholder" id="instr-img-wrap">
-    <img id="instr-img" src="" alt="Imagem de instruções">
-    <span class="img-label">📷 Imagem de instruções<br>(adicione depois)</span>
+    <img id="instr-img" src="https://i.imgur.com/GQ37w78.png" alt="Imagem de instruções" style="display:block; width:100%; height:auto; border-radius:0;">
   </div>
 
   <h2 class="instr-title">Como responder</h2>
