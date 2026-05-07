@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico Multigeracional | Crescimentum</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&family=Aptos:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent: #007BEA;
+    --accent-dark: #001B71;
+    --accent-light: #B3DFFF;
+    --text: #210000;
+    --text-light: #666;
+    --border: #e0e0e0;
+    --bg: #ffffff;
+    --bg-soft: #f4f8fe;
+    --selected-bg: #ebf5ff;
+    --selected-border: #007BEA;
+    --radius: 12px;
+    --max-w: 680px;
+  }
+
+  body {
+    font-family: 'Aptos', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar-wrap {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--border);
+    z-index: 100;
+    display: none;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: var(--max-w);
+    padding: 48px 24px 80px;
+    animation: fadeIn 0.35s ease;
+    flex-direction: column;
+  }
+  .screen.active {
+    display: flex;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── COVER ── */
+  .cover-title {
+    font-family: 'Raleway', sans-serif;
+    font-size: clamp(22px, 5vw, 32px);
+    font-weight: 800;
+    color: #007BEA;
+    margin-bottom: 28px;
+    line-height: 1.2;
+  }
+
+  .img-placeholder {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    border: 2px dashed var(--border);
+    overflow: hidden;
+  }
+  .img-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius);
+    display: none;
+  }
+  .img-placeholder .img-label {
+    font-size: 13px;
+    color: var(--text-light);
+    text-align: center;
+    padding: 16px;
+  }
+
+  .cover-text {
+    font-size: clamp(15px, 2.5vw, 16px);
+    line-height: 1.7;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .cover-text strong { font-weight: 600; }
+
+  /* ── INSTRUCTIONS ── */
+  .instr-title {
+    font-family: 'Raleway', sans-serif;
+    font-size: clamp(20px, 4vw, 26px);
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  /* ── QUESTION ── */
+  .question-header {
+    margin-bottom: 8px;
+  }
+  .question-counter {
+    font-size: 13px;
+    color: var(--text-light);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .question-text {
+    font-family: 'Raleway', sans-serif;
+    font-size: clamp(16px, 3vw, 20px);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  .ranking-hint {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    border-radius: 8px;
+    line-height: 1.5;
+  }
+  .ranking-hint span {
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* ── OPTIONS ── */
+  .options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .option-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: var(--bg);
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+  }
+  .option-item:hover:not(.selected) {
+    border-color: #ccc;
+    background: var(--bg-soft);
+  }
+  .option-item.selected {
+    border-color: var(--selected-border);
+    background: var(--selected-bg);
+  }
+  .rank-badge {
+    min-width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-light);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    background: var(--bg);
+    margin-top: 1px;
+  }
+  .option-item.selected .rank-badge {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .option-text {
+    font-size: clamp(14px, 2.3vw, 15px);
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .option-item.selected .option-text {
+    color: var(--text);
+  }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Raleway', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 13px 28px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-primary:hover { background: #0063c5; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    margin-bottom: 28px;
+    font-family: inherit;
+    transition: color 0.2s;
+  }
+  .btn-back:hover { color: var(--text); }
+
+  /* ── RESULTS ── */
+  .result-title {
+    font-family: 'Raleway', sans-serif;
+    font-size: clamp(20px, 4vw, 28px);
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .result-subtitle {
+    font-size: 15px;
+    color: var(--text-light);
+    margin-bottom: 36px;
+    line-height: 1.6;
+  }
+
+  .dor-card {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .dor-card.top {
+    border-color: var(--accent);
+    background: #ebf5ff;
+  }
+  .dor-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+  .dor-rank {
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-light);
+  }
+  .dor-card.top .dor-rank {
+    color: var(--accent);
+  }
+  .dor-pct {
+    font-family: 'Raleway', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .dor-card.top .dor-pct {
+    color: var(--accent);
+  }
+  .dor-name {
+    font-family: 'Raleway', sans-serif;
+    font-size: clamp(15px, 3vw, 17px);
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .dor-bar-wrap {
+    background: var(--border);
+    border-radius: 6px;
+    height: 10px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .dor-bar-fill {
+    height: 100%;
+    background: #999;
+    border-radius: 6px;
+    transition: width 1.1s cubic-bezier(0.4,0,0.2,1);
+  }
+  .dor-card.top .dor-bar-fill {
+    background: var(--accent);
+  }
+  .dor-desc {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-light);
+  }
+
+  .result-footer {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .result-footer p {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  .btn-restart {
+    background: none;
+    border: 1.5px solid var(--border);
+    color: var(--text-light);
+    font-family: 'Raleway', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-restart:hover {
+    border-color: var(--text-light);
+    color: var(--text);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 480px) {
+    .screen { padding: 36px 16px 80px; }
+    .option-item { padding: 12px 14px; }
+    .dor-card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Progress bar -->
+<div class="progress-bar-wrap" id="progressBarWrap">
+  <div class="progress-bar-fill" id="progressBarFill"></div>
+</div>
+
+<!-- ══ SCREEN: COVER ══ -->
+<div class="screen active" id="screen-cover">
+  <h1 class="cover-title">Diagnóstico Multigeracional</h1>
+
+  <div class="img-placeholder" id="cover-img-wrap">
+    <img id="cover-img" src="" alt="Imagem de capa">
+    <span class="img-label">📷 Imagem de capa<br>(adicione depois)</span>
+  </div>
+
+  <p class="cover-text">
+    Este diagnóstico ajuda a <strong>identificar os principais desafios de liderança multigeracional</strong> presentes na sua organização hoje.
+  </p>
+  <p class="cover-text" style="margin-bottom:32px;">
+    Ao final, você terá um <strong>mapa das dores mais urgentes</strong> para orientar decisões de desenvolvimento e gestão.
+  </p>
+
+  <div>
+    <button class="btn-primary" onclick="goTo('screen-instructions')">
+      Avançar →
+    </button>
+  </div>
+</div>
+
+<!-- ══ SCREEN: INSTRUCTIONS ══ -->
+<div class="screen" id="screen-instructions">
+  <button class="btn-back" onclick="goTo('screen-cover')">← Voltar</button>
+
+  <div class="img-placeholder" id="instr-img-wrap">
+    <img id="instr-img" src="" alt="Imagem de instruções">
+    <span class="img-label">📷 Imagem de instruções<br>(adicione depois)</span>
+  </div>
+
+  <h2 class="instr-title">Como responder</h2>
+
+  <p class="cover-text">
+    Você vai encontrar <strong>10 perguntas</strong>. Em cada uma delas, há <strong>5 sentenças</strong> que descrevem perspectivas diferentes sobre um mesmo desafio de liderança multigeracional.
+  </p>
+  <p class="cover-text" style="margin-bottom:32px;">
+    Para cada pergunta, clique nas sentenças em ordem de prioridade, da que você <strong>mais se identifica</strong> (1º) até a que <strong>menos se identifica</strong> (5º). Não há respostas certas ou erradas.
+  </p>
+
+  <div>
+    <button class="btn-primary" onclick="startTest()">
+      Iniciar Teste →
+    </button>
+  </div>
+</div>
+
+<!-- ══ SCREEN: QUESTION ══ -->
+<div class="screen" id="screen-question">
+  <button class="btn-back" onclick="goBack()">← Voltar</button>
+
+  <div class="question-header">
+    <div class="question-counter" id="questionCounter">Pergunta 1 de 10</div>
+    <h2 class="question-text" id="questionText"></h2>
+  </div>
+
+  <div class="ranking-hint">
+    Clique nas sentenças em ordem: <span>1º = mais se identifica</span> → <span>5º = menos se identifica</span>.<br>
+    Clique numa sentença já marcada para desmarcá-la.
+  </div>
+
+  <div class="options-list" id="optionsList"></div>
+
+  <div>
+    <button class="btn-primary" id="btnAvancar" disabled onclick="nextQuestion()">
+      Avançar →
+    </button>
+  </div>
+</div>
+
+<!-- ══ SCREEN: RESULTS ══ -->
+<div class="screen" id="screen-results">
+  <h2 class="result-title">Resultado do Diagnóstico</h2>
+  <p class="result-subtitle">
+    Veja abaixo as dores organizacionais identificadas, rankeadas da mais urgente para a que precisa de menos atenção imediata.
+  </p>
+
+  <div id="resultCards"></div>
+
+  <div class="result-footer">
+    <button class="btn-primary" id="btnDownload" onclick="generatePDF()" style="margin-bottom:12px; width:100%; justify-content:center;">
+      Baixar resultado em PDF
+    </button>
+    <button class="btn-restart" onclick="restart()">↺ Refazer diagnóstico</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  DADOS
+// ══════════════════════════════════════════
+const DORES = {
+  D1: {
+    nome: 'Gestão sem repertório geracional',
+    desc: 'As lideranças que aplicam o mesmo estilo para todos os perfis perdem em engajamento, comunicação e desenvolvimento. Sem repertório para adaptar a abordagem, a liderança média se torna genérica e pouco efetiva.'
+  },
+  D2: {
+    nome: 'Ruídos entre gerações e níveis',
+    desc: 'Expectativas desalinhadas, mensagens que se perdem e mal-entendidos recorrentes que afetam clima e resultado. O problema não é a falta de comunicação: é que cada geração opera com uma gramática diferente.'
+  },
+  D3: {
+    nome: 'Resultado versus humanização',
+    desc: 'A tensão entre cobrar e cuidar paralisa as lideranças. Culturas hierárquicas e técnicas colidem com equipes que exigem propósito, autonomia e escuta. A liderança oscila entre os dois extremos sem clareza de como equilibrar.'
+  },
+  D4: {
+    nome: 'Engajamento em diferentes fases',
+    desc: 'Quem está começando quer crescimento rápido. Quem está no meio quer reconhecimento. Quem tem décadas de casa quer relevância. Criar condições que façam sentido para as três ao mesmo tempo é um dos maiores desafios da liderança multigeracional.'
+  },
+  D5: {
+    nome: 'Conhecimento que não se transfere',
+    desc: 'Quando lideranças senioras saem, levam consigo o jeito de decidir, de interpretar e de navegar a organização. Sem sucessão preparada e sem transferência real de conhecimento, a nova geração assume sem os critérios que o cargo exige.'
+  }
+};
+
+const QUESTIONS = [
+  {
+    text: 'Quando você observa o dia a dia da liderança na sua organização, qual das situações abaixo mais reflete o que acontece?',
+    options: [
+      { text: 'As lideranças tendem a liderar da mesma forma para todo mundo, independentemente da geração ou momento de carreira de cada pessoa.', dor: 'D1' },
+      { text: 'O que a liderança comunica chega de formas completamente diferentes para as diferentes gerações do time e isso gera ruído, retrabalho e desalinhamento.', dor: 'D2' },
+      { text: 'A pressão por resultado recai de forma igual sobre gerações com motivações muito diferentes e a liderança não sabe como cobrar sem perder cada uma delas.', dor: 'D3' },
+      { text: 'É difícil manter o mesmo nível de engajamento entre quem está começando, quem está no meio e quem já está há muito tempo na organização.', dor: 'D4' },
+      { text: 'Quando alguém sênior sai, a organização percebe que perdeu mais do que um cargo: perdeu um jeito de pensar e de decidir.', dor: 'D5' }
+    ]
+  },
+  {
+    text: 'Pense em situações de tensão que você observa no ambiente de trabalho. Qual sentença mais descreve o que você vê com frequência?',
+    options: [
+      { text: 'As gerações mais novas esperam líderes que ouçam e expliquem o porquê. As mais experientes foram formadas em culturas onde resultado bastava. Esse choque ainda não foi resolvido.', dor: 'D3' },
+      { text: 'Profissionais jovens se desligam da organização antes de atingir o seu potencial, e frequentemente por razões que poderiam ser evitadas.', dor: 'D4' },
+      { text: 'As lideranças sabem que precisam se adaptar a perfis diferentes, mas não têm método nem segurança para fazer isso na prática.', dor: 'D1' },
+      { text: 'O conhecimento acumulado pelas pessoas mais seniores não está sendo transferido para as gerações seguintes, e quando essas pessoas saem, a organização perde mais do que um cargo.', dor: 'D5' },
+      { text: 'Mal-entendidos entre áreas e gerações são frequentes, mas costumam ser atribuídos a personalidades, não a diferenças de referência e contexto.', dor: 'D2' }
+    ]
+  },
+  {
+    text: 'Ao pensar em como sua organização lida com as diferenças entre gerações, qual situação mais se aproxima da realidade?',
+    options: [
+      { text: 'O que faz sentido para um profissional de 25 anos raramente faz sentido para um de 50, e a organização ainda não encontrou uma resposta para isso.', dor: 'D4' },
+      { text: 'Existe discurso de valorização do conhecimento acumulado, mas na prática as pessoas mais experientes sentem que estão sendo preteridas pela velocidade e pelo novo.', dor: 'D5' },
+      { text: 'A comunicação flui bem dentro dos grupos de mesma geração, mas trava quando precisa cruzar fronteiras de idade ou experiência.', dor: 'D2' },
+      { text: 'A liderança sabe que não pode gerir da mesma forma uma equipe de cinco gerações diferentes, mas ainda não foi preparada para fazer isso com método e consistência.', dor: 'D1' },
+      { text: 'A organização pede às novas gerações que se adaptem à cultura existente, mas raramente questiona se essa cultura ainda faz sentido para quem está chegando.', dor: 'D3' }
+    ]
+  },
+  {
+    text: 'Quando você pensa nos desafios de desenvolver e reter pessoas, qual sentença mais ressoa com o que você vivencia?',
+    options: [
+      { text: 'Os potenciais sucessores são mais jovens e têm competências diferentes das gerações anteriores, mas não estão sendo preparados para absorver o que os mais seniores ainda carregam.', dor: 'D5' },
+      { text: 'As expectativas sobre liderança variam muito entre gerações, e a liderança não sabe como atender a todas ao mesmo tempo.', dor: 'D1' },
+      { text: 'Quem está no meio da carreira sente que estacionou: tem experiência, mas não enxerga novos desafios nem reconhecimento à altura.', dor: 'D4' },
+      { text: 'As gerações mais novas chegam com expectativa de um ambiente humano e com propósito. O que encontram, na prática, é uma cultura que ainda mede tudo por entrega e isso acelera o desengajamento.', dor: 'D3' },
+      { text: 'A mesma mensagem é interpretada de formas completamente diferentes dependendo de quem a recebe, e isso gera ruído e retrabalho.', dor: 'D2' }
+    ]
+  },
+  {
+    text: 'Qual das situações abaixo você reconhece como um ponto de atenção real na sua organização hoje?',
+    options: [
+      { text: 'A liderança não tem clareza sobre como engajar quem está começando, quem está consolidado e quem está próximo da aposentadoria ao mesmo tempo.', dor: 'D4' },
+      { text: 'Cada geração consome e processa informação de uma forma diferente, e a organização ainda comunica como se todos esperassem o mesmo canal, o mesmo formato e o mesmo ritmo.', dor: 'D2' },
+      { text: 'A saída de lideranças senioras revela que o plano de sucessão existia no papel, mas não na prática.', dor: 'D5' },
+      { text: 'A cobrança por performance existe, mas as lideranças não sabem como fazer isso de forma que respeite as diferentes motivações e momentos de vida de cada um.', dor: 'D3' },
+      { text: 'Quando o assunto é adaptar o estilo de liderança a perfis diferentes, o que falta não é vontade: é método.', dor: 'D1' }
+    ]
+  },
+  {
+    text: 'Pense na cultura da sua organização. Qual sentença melhor descreve um padrão que você observa com regularidade?',
+    options: [
+      { text: 'O conhecimento tácito, o jeito de decidir, de navegar a política interna e de interpretar o contexto, não é ensinado: é perdido.', dor: 'D5' },
+      { text: 'As lideranças que tentam humanizar a gestão às vezes são vistas como menos rigorosas ou menos orientadas a resultado.', dor: 'D3' },
+      { text: 'A organização espera que todos se comuniquem da mesma forma, mas ignora que cada geração tem uma gramática própria de trabalho.', dor: 'D2' },
+      { text: 'A proposta de valor da organização para seus colaboradores não é clara o suficiente para atender a diferentes fases e expectativas de carreira.', dor: 'D4' },
+      { text: 'O repertório de liderança que funcionou com as gerações anteriores já não é suficiente para engajar quem está chegando ao mercado agora, e poucos líderes foram preparados para essa transição.', dor: 'D1' }
+    ]
+  },
+  {
+    text: 'Ao olhar para a liderança da sua organização nos próximos três a cinco anos, qual cenário mais te preocupa?',
+    options: [
+      { text: 'As lideranças senioras estão saindo e as mais jovens ainda não foram preparadas para ocupar esse espaço, assim a janela de transferência de conhecimento está se fechando.', dor: 'D5' },
+      { text: 'A rotatividade entre as pessoas mais jovens vai continuar alta porque a organização ainda não entende o que de fato as retém.', dor: 'D4' },
+      { text: 'As lideranças atuais não vão conseguir engajar equipes cada vez mais diversas em termos de geração, expectativa e forma de trabalhar.', dor: 'D1' },
+      { text: 'A tensão entre entregar resultado e cuidar das pessoas vai se intensificar, e sem preparo a liderança vai continuar oscilando entre os dois extremos.', dor: 'D3' },
+      { text: 'A comunicação entre diferentes níveis e gerações vai continuar falhando, comprometendo alinhamento, clima e resultado.', dor: 'D2' }
+    ]
+  },
+  {
+    text: 'Quando você pensa em decisões que a sua organização precisa tomar sobre pessoas, qual situação mais reflete o que está em aberto?',
+    options: [
+      { text: 'Como manter o engajamento de quem já tem décadas de casa e ainda tem muito a contribuir, mas sente que seu espaço está diminuindo.', dor: 'D4' },
+      { text: 'Como comunicar decisões e diretrizes de forma que façam sentido para gerações com valores, referências e formas de processar informação tão diferentes entre si.', dor: 'D2' },
+      { text: 'Como equilibrar a cobrança por resultado com as expectativas das novas gerações por propósito, autonomia e escuta, sem perder a entrega nem o engajamento.', dor: 'D3' },
+      { text: 'Como garantir que o conhecimento das lideranças mais experientes seja transferido antes que saiam.', dor: 'D5' },
+      { text: 'Como preparar a liderança média para gerir equipes multigeracionais com repertório e não apenas com intuição.', dor: 'D1' }
+    ]
+  },
+  {
+    text: 'Qual das situações abaixo mais traduz um desafio que você percebe nas relações entre liderança e equipes?',
+    options: [
+      { text: 'As lideranças cobram da mesma forma quem está no primeiro emprego e quem tem 20 anos de experiência, e isso gera fricção e desmotivação.', dor: 'D1' },
+      { text: 'A liderança fala uma linguagem e as equipes mais jovens interpretam outra, o gap geracional na comunicação é real e gera conflito, retrabalho e perda de clima.', dor: 'D2' },
+      { text: 'As gerações mais novas esperam poder falar sobre dificuldades sem julgamento. A cultura de resultado a qualquer custo ainda pune quem pede apoio, e isso cria um silêncio que custa caro.', dor: 'D3' },
+      { text: 'Talentos que poderiam crescer na organização saem porque não enxergam um caminho claro ou não se sentem vistos no momento de carreira em que estão.', dor: 'D4' },
+      { text: 'A liderança sênior concentra decisões críticas sem criar situações reais de aprendizado para quem poderia sucedê-la.', dor: 'D5' }
+    ]
+  },
+  {
+    text: 'Ao refletir sobre o que sua organização mais precisa desenvolver agora, qual sentença mais corresponde à sua percepção?',
+    options: [
+      { text: 'Criar condições reais para que o conhecimento dos mais experientes chegue às novas gerações antes que se perca.', dor: 'D5' },
+      { text: 'Desenvolver líderes que saibam gerir gerações diferentes com intenção, adaptando estilo, linguagem e expectativa de acordo com quem está do outro lado.', dor: 'D1' },
+      { text: 'Construir uma cultura que entregue resultado sem abrir mão do que as novas gerações mais valorizam: propósito, escuta e espaço para ser quem são.', dor: 'D3' },
+      { text: 'Melhorar a qualidade e a clareza da comunicação entre diferentes níveis hierárquicos e gerações.', dor: 'D2' },
+      { text: 'Criar uma proposta de desenvolvimento que faça sentido para quem está começando, para quem está no meio e para quem está consolidado.', dor: 'D4' }
+    ]
+  }
+];
+
+// ══════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════
+let currentQuestion = 0;
+let answers = []; // answers[q] = [{optionIndex, rank}, ...]
+let currentRanking = []; // indices da ordem de clique na pergunta atual
+
+// ══════════════════════════════════════════
+//  NAVEGAÇÃO
+// ══════════════════════════════════════════
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function startTest() {
+  currentQuestion = 0;
+  answers = new Array(QUESTIONS.length).fill(null).map(() => []);
+  document.getElementById('progressBarWrap').style.display = 'block';
+  loadQuestion(0);
+  goTo('screen-question');
+}
+
+function goBack() {
+  if (currentQuestion === 0) {
+    goTo('screen-instructions');
+    document.getElementById('progressBarWrap').style.display = 'none';
+  } else {
+    currentQuestion--;
+    currentRanking = answers[currentQuestion].map(a => a.optionIndex);
+    loadQuestion(currentQuestion, true);
+  }
+}
+
+function restart() {
+  document.getElementById('progressBarWrap').style.display = 'none';
+  goTo('screen-cover');
+}
+
+// ══════════════════════════════════════════
+//  PERGUNTA
+// ══════════════════════════════════════════
+function loadQuestion(idx, restoring = false) {
+  const q = QUESTIONS[idx];
+  document.getElementById('questionCounter').textContent = `Pergunta ${idx + 1} de ${QUESTIONS.length}`;
+  document.getElementById('questionText').textContent = q.text;
+
+  // Reset ranking se nova pergunta
+  if (!restoring) {
+    currentRanking = answers[idx] && answers[idx].length ? answers[idx].map(a => a.optionIndex) : [];
+  }
+
+  renderOptions(q.options);
+  updateProgress(idx);
+  updateBtnState();
+}
+
+function renderOptions(options) {
+  const list = document.getElementById('optionsList');
+  list.innerHTML = '';
+  options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-item';
+    btn.setAttribute('data-index', i);
+
+    const badge = document.createElement('span');
+    badge.className = 'rank-badge';
+    badge.setAttribute('data-badge', i);
+
+    const rankPos = currentRanking.indexOf(i);
+    if (rankPos !== -1) {
+      btn.classList.add('selected');
+      badge.textContent = rankPos + 1;
+    } else {
+      badge.textContent = '';
+    }
+
+    const text = document.createElement('span');
+    text.className = 'option-text';
+    text.textContent = opt.text;
+
+    btn.appendChild(badge);
+    btn.appendChild(text);
+    btn.addEventListener('click', () => toggleOption(i));
+    list.appendChild(btn);
+  });
+}
+
+function toggleOption(idx) {
+  const pos = currentRanking.indexOf(idx);
+  if (pos !== -1) {
+    // Desmarcar
+    currentRanking.splice(pos, 1);
+  } else {
+    // Marcar
+    if (currentRanking.length < 5) {
+      currentRanking.push(idx);
+    }
+  }
+  refreshOptionStates();
+  updateBtnState();
+}
+
+function refreshOptionStates() {
+  const items = document.querySelectorAll('.option-item');
+  items.forEach((item, i) => {
+    const badge = item.querySelector('.rank-badge');
+    const pos = currentRanking.indexOf(i);
+    if (pos !== -1) {
+      item.classList.add('selected');
+      badge.textContent = pos + 1;
+    } else {
+      item.classList.remove('selected');
+      badge.textContent = '';
+    }
+  });
+}
+
+function updateBtnState() {
+  document.getElementById('btnAvancar').disabled = currentRanking.length < 5;
+}
+
+function updateProgress(idx) {
+  const pct = ((idx) / QUESTIONS.length) * 100;
+  document.getElementById('progressBarFill').style.width = pct + '%';
+}
+
+// ══════════════════════════════════════════
+//  AVANÇAR / CALCULAR
+// ══════════════════════════════════════════
+function nextQuestion() {
+  // Salva resposta
+  const q = QUESTIONS[currentQuestion];
+  answers[currentQuestion] = currentRanking.map((optIdx, rankPos) => ({
+    optionIndex: optIdx,
+    dor: q.options[optIdx].dor,
+    points: 5 - rankPos // rank 1 = 5 pts, rank 5 = 1 pt
+  }));
+
+  if (currentQuestion < QUESTIONS.length - 1) {
+    currentQuestion++;
+    currentRanking = answers[currentQuestion] && answers[currentQuestion].length
+      ? answers[currentQuestion].map(a => a.optionIndex)
+      : [];
+    loadQuestion(currentQuestion);
+    window.scrollTo(0, 0);
+  } else {
+    // Fim: calcular resultado
+    document.getElementById('progressBarFill').style.width = '100%';
+    calcResults();
+    goTo('screen-results');
+  }
+}
+
+// ══════════════════════════════════════════
+//  RESULTADOS
+// ══════════════════════════════════════════
+function calcResults() {
+  const scores = { D1: 0, D2: 0, D3: 0, D4: 0, D5: 0 };
+  const total = QUESTIONS.length * (5 + 4 + 3 + 2 + 1); // 150
+
+  answers.forEach(qAnswers => {
+    qAnswers.forEach(a => {
+      scores[a.dor] += a.points;
+    });
+  });
+
+  const ranked = Object.entries(scores)
+    .map(([key, pts]) => ({
+      key,
+      pts,
+      pct: Math.round((pts / total) * 100),
+      ...DORES[key]
+    }))
+    .sort((a, b) => b.pts - a.pts);
+
+  const container = document.getElementById('resultCards');
+  container.innerHTML = '';
+
+  const labels = ['1º: Atenção prioritária', '2º', '3º', '4º', '5º: Menor urgência'];
+
+  ranked.forEach((dor, i) => {
+    const card = document.createElement('div');
+    card.className = 'dor-card' + (i === 0 ? ' top' : '');
+
+    card.innerHTML = `
+      <div class="dor-card-header">
+        <span class="dor-rank">${labels[i]}</span>
+        <span class="dor-pct">${dor.pct}%</span>
+      </div>
+      <div class="dor-name">${dor.nome}</div>
+      <div class="dor-bar-wrap">
+        <div class="dor-bar-fill" style="width: 0%" data-target="${dor.pct}"></div>
+      </div>
+      <div class="dor-desc">${dor.desc}</div>
+    `;
+    container.appendChild(card);
+  });
+
+  // Animar barras
+  setTimeout(() => {
+    document.querySelectorAll('.dor-bar-fill').forEach(bar => {
+      bar.style.width = bar.getAttribute('data-target') + '%';
+    });
+  }, 200);
+}
+
+// ══════════════════════════════════════════
+//  GERAR PDF
+// ══════════════════════════════════════════
+function generatePDF(auto = false) {
+  const btn = document.getElementById('btnDownload');
+  if (btn) { btn.textContent = '⏳ Gerando PDF...'; btn.disabled = true; }
+
+  setTimeout(() => {
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const W = 210; // largura A4
+      const margin = 20;
+      const contentW = W - margin * 2;
+      let y = 0;
+
+      // ── Cabeçalho ──
+      doc.setFillColor(0, 123, 234); // #007BEA
+      doc.rect(0, 0, W, 36, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('Diagnóstico Multigeracional', margin, 16);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Crescimentum | Resultado Individual', margin, 26);
+
+      const dataHoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+      doc.text(dataHoje, W - margin, 26, { align: 'right' });
+
+      y = 48;
+
+      // ── Subtítulo ──
+      doc.setTextColor(33, 0, 0); // #210000
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const subtitulo = 'As dores organizacionais abaixo foram rankeadas da mais urgente para a que precisa de menos atenção imediata, com base nas suas respostas.';
+      const subLines = doc.splitTextToSize(subtitulo, contentW);
+      doc.text(subLines, margin, y);
+      y += subLines.length * 5 + 10;
+
+      // ── Cards de resultado ──
+      const cards = document.querySelectorAll('.dor-card');
+      const labels = ['1º: Atenção prioritária', '2º', '3º', '4º', '5º: Menor urgência'];
+
+      cards.forEach((card, i) => {
+        const nome = card.querySelector('.dor-name').textContent;
+        const pct  = card.querySelector('.dor-pct').textContent;
+        const desc = card.querySelector('.dor-desc').textContent;
+        const isTop = i === 0;
+
+        // Estimar altura do card
+        const descLines = doc.splitTextToSize(desc, contentW - 6);
+        const cardH = 10 + 6 + 6 + descLines.length * 4.5 + 8;
+
+        // Nova página se necessário
+        if (y + cardH > 272) { doc.addPage(); y = 20; }
+
+        // Fundo do card
+        if (isTop) {
+          doc.setFillColor(235, 245, 255); // #ebf5ff
+          doc.setDrawColor(0, 123, 234);
+        } else {
+          doc.setFillColor(250, 250, 250);
+          doc.setDrawColor(220, 220, 220);
+        }
+        doc.roundedRect(margin, y, contentW, cardH, 3, 3, 'FD');
+
+        // Label ranking
+        doc.setFont('helvetica', isTop ? 'bold' : 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(isTop ? 0 : 100, isTop ? 123 : 100, isTop ? 234 : 100);
+        doc.text(labels[i].toUpperCase(), margin + 4, y + 7);
+
+        // Percentual
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(isTop ? 0 : 33, isTop ? 123 : 0, isTop ? 234 : 0);
+        doc.text(pct, W - margin - 4, y + 7, { align: 'right' });
+
+        // Nome
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(33, 0, 0);
+        doc.text(nome, margin + 4, y + 14);
+
+        // Barra
+        const barY = y + 17;
+        const barW = contentW - 8;
+        doc.setFillColor(220, 220, 220);
+        doc.roundedRect(margin + 4, barY, barW, 2.5, 1, 1, 'F');
+        const fill = parseInt(pct) / 100;
+        doc.setFillColor(isTop ? 0 : 150, isTop ? 123 : 150, isTop ? 234 : 150);
+        doc.roundedRect(margin + 4, barY, barW * fill, 2.5, 1, 1, 'F');
+
+        // Descrição
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 100, 100);
+        doc.text(descLines, margin + 4, barY + 7);
+
+        y += cardH + 5;
+      });
+
+      // ── Rodapé ──
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFontSize(8);
+        doc.setTextColor(180, 180, 180);
+        doc.text('Crescimentum | crescimentum.com.br', margin, 290);
+        doc.text(`${p} / ${pageCount}`, W - margin, 290, { align: 'right' });
+      }
+
+      doc.save('Diagnostico Multigeracional - Resultado.pdf');
+
+    } catch(e) {
+      console.error('Erro ao gerar PDF:', e);
+      alert('Não foi possível gerar o PDF. Tente novamente.');
+    } finally {
+      if (btn) { btn.textContent = '↓ Baixar resultado em PDF'; btn.disabled = false; }
+    }
+  }, auto ? 100 : 0);
+}
+</script>
+</body>
+</html>
